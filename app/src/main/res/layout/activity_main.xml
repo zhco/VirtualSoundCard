@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 预览 -->
+    <android.opengl.GLSurfaceView
+        android:id="@+id/glSurface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 控制面板 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="12dp"
+        android:background="#CC000000">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 美颜滑块 -->
+            <TextView android:text="磨皮" android:textColor="#FFF" android:textSize="12sp" />
+            <SeekBar android:id="@+id/seekSmooth" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="50" />
+            <TextView android:text="美白" android:textColor="#FFF" android:textSize="12sp" />
+            <SeekBar android:id="@+id/seekWhiten" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="50" />
+            <TextView android:text="瘦脸" android:textColor="#FFF" android:textSize="12sp" />
+            <SeekBar android:id="@+id/seekThin" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="30" />
+            <TextView android:text="大眼" android:textColor="#FFF" android:textSize="12sp" />
+            <SeekBar android:id="@+id/seekBigEye" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="30" />
+
+            <!-- 音频效果开关 -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                    <TextView android:text="降噪" android:textColor="#FFF" android:textSize="10sp" />
+                    <Switch android:id="@+id/switchNoiseGate" android:checked="true" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                    <TextView android:text="混响" android:textColor="#FFF" android:textSize="10sp" />
+                    <Switch android:id="@+id/switchReverb" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                    <TextView android:text="闪避" android:textColor="#FFF" android:textSize="10sp" />
+                    <Switch android:id="@+id/switchDucker" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                    <TextView android:text="变声" android:textColor="#FFF" android:textSize="10sp" />
+                    <Switch android:id="@+id/switchPitch" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 录制按钮 -->
+            <Button
+                android:id="@+id/btnRecord"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:text="开始录制"
+                android:background="@drawable/bg_record_btn" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

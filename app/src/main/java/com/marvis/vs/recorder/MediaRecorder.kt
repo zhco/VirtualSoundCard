@@ -36,22 +36,22 @@ class MediaRecorder(private val width: Int, private val height: Int) {
     fun start(outputPath: String): Boolean {
         return try {
             // Video encoder
-            val videoFmt = MediaFormat.createVideoFormat(MediaFormat.MIME_TYPE_AVC, width, height).apply {
+            val videoFmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
                 setInteger(MediaFormat.KEY_BIT_RATE, 8000000)
                 setInteger(MediaFormat.KEY_FRAME_RATE, 30)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             }
-            videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIME_TYPE_AVC)
+            videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
             videoCodec?.configure(videoFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             inputSurface = videoCodec?.createInputSurface()
 
             // Audio encoder
-            val audioFmt = MediaFormat.createAudioFormat(MediaFormat.MIME_TYPE_AAC, 48000, 2).apply {
+            val audioFmt = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, 48000, 2).apply {
                 setInteger(MediaFormat.KEY_BIT_RATE, 192000)
                 setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 4096)
             }
-            audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIME_TYPE_AAC)
+            audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
             audioCodec?.configure(audioFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
 
             // Muxer
@@ -125,7 +125,7 @@ class MediaRecorder(private val width: Int, private val height: Int) {
             } else if (idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 if (!muxerStarted) {
                     videoTrack = muxer?.addTrack(codec.outputFormat) ?: -1
-                    audioTrack = muxer?.addTrack(audioCodec?.outputFormat) ?: -1
+                    audioTrack = muxer?.addTrack(audioCodec!!.outputFormat) ?: -1
                     muxer?.start()
                     muxerStarted = true
                 }

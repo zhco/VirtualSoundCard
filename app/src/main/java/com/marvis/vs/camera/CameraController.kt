@@ -31,7 +31,7 @@ class CameraController(private val lifecycleOwner: LifecycleOwner) {
         surfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
         previewSurface = Surface(surfaceTexture)
 
-        val cameraProvider = ProcessCameraProvider.getInstance(lifecycleOwner.owner.context).get()
+        val cameraProvider = ProcessCameraProvider.getInstance(lifecycleOwner as android.content.Context).get()
         val preview = Preview.Builder()
             .setTargetResolution(previewSize)
             .build()
@@ -57,4 +57,3 @@ class CameraController(private val lifecycleOwner: LifecycleOwner) {
     }
 }
 
-val LifecycleOwner.owner: LifecycleOwner get() = this

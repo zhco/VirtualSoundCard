@@ -6,6 +6,7 @@
 #include <mutex>
 #include <vector>
 #include <cstring>
+#include <cmath>
 
 #include "dsp/compressor.h"
 #include "dsp/eq.h"

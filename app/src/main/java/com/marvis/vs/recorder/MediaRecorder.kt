@@ -79,8 +79,8 @@ class MediaRecorder(private val width: Int, private val height: Int) {
             } else if (idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 if (!muxerStarted) {
                     videoTrack = muxer?.addTrack(codec.outputFormat) ?: -1
-                    if (audioCodec != null) {
-                        audioTrack = muxer?.addTrack(audioCodec?.outputFormat) ?: -1
+                    audioCodec?.outputFormat?.let { fmt ->
+                        audioTrack = muxer?.addTrack(fmt) ?: -1
                     }
                     muxer?.start()
                     muxerStarted = true

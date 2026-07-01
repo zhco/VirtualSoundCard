@@ -116,7 +116,7 @@ class MainActivity : AppCompatActivity() {
     private fun initApp() {
         beautyRenderer = BeautyRenderer(this)
         faceDetector = FaceDetector(this)
-        cameraController = CameraController(this)
+        cameraController = CameraController(applicationContext, this)
 
         AudioEngine.start(48000)
 
@@ -127,6 +127,9 @@ class MainActivity : AppCompatActivity() {
         glSurface.setEGLContextClientVersion(3)
         glSurface.setRenderer(GlRenderer())
         glSurface.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+
+        // 在主线程启动相机
+        cameraController.startCamera()
 
         btnRecord.setOnClickListener { toggleRecording() }
         seekSmooth.setOnSeekBarChangeListener(simpleSeek { beautyRenderer.smoothStrength = it / 100f })
@@ -139,32 +142,48 @@ class MainActivity : AppCompatActivity() {
         switchPitch.setOnCheckedChangeListener { _, on -> AudioEngine.pitchEnabled = on }
     }
 
+    private fun getRecordingDir(): File {
+        val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            externalMediaDirs.firstOrNull()?.let { File(it, "Movies") }
+                ?: File(filesDir, "Movies")
+        } else {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+        }
+        dir.mkdirs()
+        return dir
+    }
+
     private fun toggleRecording() {
         if (isRecording) {
             mediaRecorder?.stop()
             mediaRecorder = null
             isRecording = false
             btnRecord.text = "开始录制"
-            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
+            runOnUiThread { Toast.makeText(this@MainActivity, "已保存", Toast.LENGTH_SHORT).show() }
         } else {
-            val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                File(externalMediaDirs.firstOrNull(), "Movies").also { it.mkdirs() }
-            } else {
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES).also { it.mkdirs() }
-            }
-            val path = File(dir, "VS_${System.currentTimeMillis()}.mp4").absolutePath
-            mediaRecorder = MediaRecorder(1920, 1080)
-            if (mediaRecorder?.start(path) == true) {
-                isRecording = true
-                btnRecord.text = "停止录制"
+            try {
+                val dir = getRecordingDir()
+                val path = File(dir, "VS_${System.currentTimeMillis()}.mp4").absolutePath
+                mediaRecorder = MediaRecorder(1920, 1080)
+                if (mediaRecorder?.start(path) == true) {
+                    isRecording = true
+                    btnRecord.text = "停止录制"
+                } else {
+                    mediaRecorder = null
+                    Toast.makeText(this, "录制启动失败", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                mediaRecorder = null
+                Toast.makeText(this, "录制出错: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     inner class GlRenderer : GLSurfaceView.Renderer {
         override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-            oesTexId = cameraController.init()
+            oesTexId = cameraController.initOesTexture()
             beautyRenderer.init(1920, 1080)
         }
 
@@ -178,7 +197,7 @@ class MainActivity : AppCompatActivity() {
             val outputTex = beautyRenderer.processFrame(oesTexId)
 
             if (isRecording) {
-                mediaRecorder?.feedVideoFrame(outputTex)
+                mediaRecorder?.drainVideoEncoder()
             }
             beautyRenderer.drawToScreen(outputTex)
             glSurface.requestRender()
@@ -195,6 +214,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mediaRecorder?.stop()
         AudioEngine.stop()
         cameraController.release()
         beautyRenderer.release()

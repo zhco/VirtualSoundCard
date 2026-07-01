@@ -128,9 +128,6 @@ class MainActivity : AppCompatActivity() {
         glSurface.setRenderer(GlRenderer())
         glSurface.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
-        // 在主线程启动相机
-        cameraController.startCamera()
-
         btnRecord.setOnClickListener { toggleRecording() }
         seekSmooth.setOnSeekBarChangeListener(simpleSeek { beautyRenderer.smoothStrength = it / 100f })
         seekWhiten.setOnSeekBarChangeListener(simpleSeek { beautyRenderer.whitenStrength = it / 100f })
@@ -185,6 +182,8 @@ class MainActivity : AppCompatActivity() {
         override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
             oesTexId = cameraController.initOesTexture()
             beautyRenderer.init(1920, 1080)
+            // surface 就绪后再启动相机
+            glSurface.post { cameraController.startCamera() }
         }
 
         override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {

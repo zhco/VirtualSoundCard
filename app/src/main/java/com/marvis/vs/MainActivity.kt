@@ -169,17 +169,13 @@ class MainActivity : AppCompatActivity() {
 
         override fun onDrawFrame(gl: GL10?) {
             cameraController.updateTexImage()
-
-            if (frameCount % 3 == 0) {
-            }
             frameCount++
-
             val outputTex = beautyRenderer.processFrame(oesTexId)
 
             if (isRecording) {
                 mediaRecorder?.feedVideoFrame(outputTex)
             }
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            beautyRenderer.drawToScreen(outputTex)
             glSurface.requestRender()
         }
 

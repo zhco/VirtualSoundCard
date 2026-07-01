@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.widget.*
@@ -78,16 +79,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val missing = mutableListOf<String>()
+        val permissions = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
-            missing.add(Manifest.permission.CAMERA)
+            permissions.add(Manifest.permission.CAMERA)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
-            missing.add(Manifest.permission.RECORD_AUDIO)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            missing.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.RECORD_AUDIO)
 
-        if (missing.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_PERM)
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), REQ_PERM)
         } else {
             initApp()
         }
@@ -95,20 +94,22 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_PERM && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            try {
-                initApp()
-            } catch (e: Exception) {
-                val sw = StringWriter()
-                e.printStackTrace(PrintWriter(sw))
-                AlertDialog.Builder(this)
-                    .setTitle("初始化崩溃")
-                    .setMessage(sw.toString().take(2000))
-                    .setPositiveButton("关闭") { _, _ -> finish() }
-                    .show()
+        if (requestCode == REQ_PERM) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                try {
+                    initApp()
+                } catch (e: Exception) {
+                    val sw = StringWriter()
+                    e.printStackTrace(PrintWriter(sw))
+                    AlertDialog.Builder(this)
+                        .setTitle("初始化崩溃")
+                        .setMessage(sw.toString().take(2000))
+                        .setPositiveButton("关闭") { _, _ -> finish() }
+                        .show()
+                }
+            } else {
+                Toast.makeText(this, "需要相机和麦克风权限才能运行", Toast.LENGTH_LONG).show()
             }
-        } else {
-            Toast.makeText(this, "需要全部权限才能运行", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -146,8 +147,12 @@ class MainActivity : AppCompatActivity() {
             btnRecord.text = "开始录制"
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
         } else {
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
-            dir.mkdirs()
+            val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                File(externalMediaDirs.firstOrNull(), "Movies").also { it.mkdirs() }
+            } else {
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES).also { it.mkdirs() }
+            }
             val path = File(dir, "VS_${System.currentTimeMillis()}.mp4").absolutePath
             mediaRecorder = MediaRecorder(1920, 1080)
             if (mediaRecorder?.start(path) == true) {

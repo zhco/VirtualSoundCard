@@ -1,6 +1,7 @@
 package com.marvis.vs
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
@@ -16,6 +17,8 @@ import com.marvis.vs.beauty.FaceDetector
 import com.marvis.vs.camera.CameraController
 import com.marvis.vs.recorder.MediaRecorder
 import java.io.File
+import java.io.StringWriter
+import java.io.PrintWriter
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -46,9 +49,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        bindViews()
-        checkPermissions()
+        try {
+            setContentView(R.layout.activity_main)
+            bindViews()
+            checkPermissions()
+        } catch (e: Exception) {
+            val sw = StringWriter()
+            e.printStackTrace(PrintWriter(sw))
+            AlertDialog.Builder(this)
+                .setTitle("启动崩溃")
+                .setMessage(sw.toString().take(2000))
+                .setPositiveButton("关闭") { _, _ -> finish() }
+                .show()
+        }
     }
 
     private fun bindViews() {
@@ -83,7 +96,17 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_PERM && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            initApp()
+            try {
+                initApp()
+            } catch (e: Exception) {
+                val sw = StringWriter()
+                e.printStackTrace(PrintWriter(sw))
+                AlertDialog.Builder(this)
+                    .setTitle("初始化崩溃")
+                    .setMessage(sw.toString().take(2000))
+                    .setPositiveButton("关闭") { _, _ -> finish() }
+                    .show()
+            }
         } else {
             Toast.makeText(this, "需要全部权限才能运行", Toast.LENGTH_LONG).show()
         }
@@ -94,21 +117,16 @@ class MainActivity : AppCompatActivity() {
         faceDetector = FaceDetector(this)
         cameraController = CameraController(this)
 
-        // 启动音频引擎
         AudioEngine.start(48000)
 
-        // 加载人脸模型 (可选，没有模型也能跑，只是没有瘦脸大眼)
         faceDetector.loadModel("face_landmark.tflite")
 
-        // 加载默认LUT滤镜
         try { beautyRenderer.loadLutFromAsset("lut_default.png") } catch (_: Exception) {}
 
-        // 设置GLSurfaceView
         glSurface.setEGLContextClientVersion(3)
         glSurface.setRenderer(GlRenderer())
         glSurface.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
-        // UI事件
         btnRecord.setOnClickListener { toggleRecording() }
         seekSmooth.setOnSeekBarChangeListener(simpleSeek { beautyRenderer.smoothStrength = it / 100f })
         seekWhiten.setOnSeekBarChangeListener(simpleSeek { beautyRenderer.whitenStrength = it / 100f })
@@ -152,21 +170,15 @@ class MainActivity : AppCompatActivity() {
         override fun onDrawFrame(gl: GL10?) {
             cameraController.updateTexImage()
 
-            // 人脸检测 (每3帧检测一次节省性能)
             if (frameCount % 3 == 0) {
-                // TODO: 从OES纹理读回Bitmap做检测，或用更高效的方式
-                // 简化: 跳过帧检测，默认值已经可用
             }
             frameCount++
 
-            // 美颜处理链
             val outputTex = beautyRenderer.processFrame(oesTexId)
 
-            // 渲染到屏幕 或 编码器
             if (isRecording) {
                 mediaRecorder?.feedVideoFrame(outputTex)
             }
-            // 渲染到屏幕 (简化: 清屏显示)
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
             glSurface.requestRender()
         }

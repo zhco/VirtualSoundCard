@@ -10,10 +10,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
-/**
- * OpenGL ES 美颜渲染管线
- * 流程: OES纹理 → 磨皮(FBO1) → 美白+LUT(FBO2) → 瘦脸大眼(FBO3) → 输出
- */
 class BeautyRenderer(private val context: Context) {
 
     companion object {
@@ -24,6 +20,15 @@ class BeautyRenderer(private val context: Context) {
             void main() {
                 gl_Position = aPosition;
                 vTexCoord = aTexCoord;
+            }
+        """.trimIndent()
+
+        private val PRESENT_FRAG = """
+            precision mediump float;
+            varying vec2 vTexCoord;
+            uniform sampler2D uTexture;
+            void main() {
+                gl_FragColor = texture2D(uTexture, vTexCoord);
             }
         """.trimIndent()
 
@@ -45,7 +50,6 @@ class BeautyRenderer(private val context: Context) {
         var rightEyeY: Float = 0.4f
     )
 
-    // 美颜参数
     var smoothStrength: Float = 0.6f
     var whitenStrength: Float = 0.5f
     var thinFaceStrength: Float = 0.4f
@@ -58,6 +62,7 @@ class BeautyRenderer(private val context: Context) {
     private var programSmooth = 0
     private var programWhiten = 0
     private var programReshape = 0
+    private var programPresent = 0
     private var fboTexIds = IntArray(3)
     private var fboIds = IntArray(3)
     private var width = 0
@@ -75,12 +80,11 @@ class BeautyRenderer(private val context: Context) {
         width = surfaceWidth
         height = surfaceHeight
 
-        // 编译着色器程序
         programSmooth = createProgram(VERTEX_SHADER, loadAsset("beauty_smooth.glsl"))
         programWhiten = createProgram(VERTEX_SHADER, loadAsset("beauty_whiten.glsl"))
         programReshape = createProgram(VERTEX_SHADER, loadAsset("beauty_reshape.glsl"))
+        programPresent = createProgram(VERTEX_SHADER, PRESENT_FRAG)
 
-        // 创建3个FBO做链式处理
         for (i in 0..2) {
             val tex = IntArray(1)
             GLES20.glGenTextures(1, tex, 0)
@@ -101,22 +105,15 @@ class BeautyRenderer(private val context: Context) {
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
     }
 
-    /**
-     * 处理一帧，返回输出纹理ID
-     * @param oesTexId Camera输出的OES纹理ID
-     */
     fun processFrame(oesTexId: Int): Int {
-        // Pass 1: 磨皮 → FBO 0
         renderToFbo(0, oesTexId, programSmooth, mapOf(
             "uTexelSize" to floatArrayOf(1f / width, 1f / height)
         ), isOes = true)
 
-        // Pass 2: 美白+LUT → FBO 1
         renderToFbo(1, fboTexIds[0], programWhiten, mapOf(
             "uWhitenStrength" to floatArrayOf(whitenStrength)
         ), lutTexId = lutTextureId)
 
-        // Pass 3: 瘦脸大眼 → FBO 2
         renderToFbo(2, fboTexIds[1], programReshape, mapOf(
             "uFaceCenter" to floatArrayOf(faceLandmarks.faceCenterX, faceLandmarks.faceCenterY),
             "uThinStrength" to floatArrayOf(thinFaceStrength),
@@ -127,6 +124,27 @@ class BeautyRenderer(private val context: Context) {
         ))
 
         return fboTexIds[2]
+    }
+
+    fun drawToScreen(texId: Int) {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0, 0, width, height)
+        GLES20.glUseProgram(programPresent)
+
+        val posLoc = GLES20.glGetAttribLocation(programPresent, "aPosition")
+        val texLoc = GLES20.glGetAttribLocation(programPresent, "aTexCoord")
+        GLES20.glVertexAttribPointer(posLoc, 2, GLES20.GL_FLOAT, false, 16, vertexBuf.position(0))
+        GLES20.glVertexAttribPointer(texLoc, 2, GLES20.GL_FLOAT, false, 16, vertexBuf.position(2))
+        GLES20.glEnableVertexAttribArray(posLoc)
+        GLES20.glEnableVertexAttribArray(texLoc)
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programPresent, "uTexture"), 0)
+
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        GLES20.glDisableVertexAttribArray(posLoc)
+        GLES20.glDisableVertexAttribArray(texLoc)
     }
 
     fun updateFaceLandmarks(lm: FaceLandmarks) {
@@ -160,10 +178,9 @@ class BeautyRenderer(private val context: Context) {
         GLES20.glDeleteProgram(programSmooth)
         GLES20.glDeleteProgram(programWhiten)
         GLES20.glDeleteProgram(programReshape)
+        GLES20.glDeleteProgram(programPresent)
         if (lutTextureId > 0) GLES20.glDeleteTextures(1, intArrayOf(lutTextureId), 0)
     }
-
-    // --- private ---
 
     private fun renderToFbo(
         fboIdx: Int, inputTexId: Int, program: Int,

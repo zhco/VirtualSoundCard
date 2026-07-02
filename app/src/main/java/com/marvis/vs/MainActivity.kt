@@ -142,8 +142,7 @@ class MainActivity : AppCompatActivity() {
     private fun getRecordingDir(): File {
         val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            externalMediaDirs.firstOrNull()?.let { File(it, "Movies") }
-                ?: File(filesDir, "Movies")
+            externalMediaDirs.firstOrNull()?.let { File(it, "Movies") } ?: File(filesDir, "Movies")
         } else {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
         }
@@ -182,8 +181,9 @@ class MainActivity : AppCompatActivity() {
         override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
             oesTexId = cameraController.initOesTexture()
             beautyRenderer.init(1920, 1080)
-            // surface 就绪后再启动相机
             glSurface.post { cameraController.startCamera() }
+            // 显式触发首帧渲染
+            glSurface.requestRender()
         }
 
         override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {

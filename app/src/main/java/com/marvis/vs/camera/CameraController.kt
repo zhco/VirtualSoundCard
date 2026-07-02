@@ -44,18 +44,13 @@ class CameraController(
         cameraProviderFuture?.addListener({
             try {
                 val cameraProvider = cameraProviderFuture?.get() ?: return@addListener
-                val preview = Preview.Builder()
-                    .setTargetResolution(previewSize)
-                    .build()
-                    .apply {
-                        setSurfaceProvider { request ->
-                            previewSurface?.let { surf ->
-                                request.provideSurface(surf, cameraExecutor) { result ->
-                                    // surface released
-                                }
-                            }
+                val preview = Preview.Builder().build().apply {
+                    setSurfaceProvider { request ->
+                        previewSurface?.let { surf ->
+                            request.provideSurface(surf, cameraExecutor) {}
                         }
                     }
+                }
                 val selector = CameraSelector.DEFAULT_FRONT_CAMERA
                 cameraProvider.unbindAll()
                 camera = cameraProvider.bindToLifecycle(lifecycleOwner, selector, preview)
